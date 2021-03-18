@@ -1,0 +1,9 @@
+[package]
+name = "qchem-gaussian-collab"
+version = "0.1.0"
+authors = ["Cyrille Lavigne <clavigne@chem.utoronto.ca>"]
+edition = "2018"
+
+[dependencies]
+clap = "3.0.0-beta.2"
+
