@@ -1,5 +1,5 @@
 use clap::{crate_version, App, Arg};
-use extgauss::qchem_translate_to_gaussian;
+use extgauss::{parse_gau_ein, qchem_translate_to_gaussian};
 use num_cpus;
 use std::env;
 use std::fs::{read_to_string, File};
@@ -51,7 +51,18 @@ fn main() -> Result<()> {
     msgs.write(format!(" |  rundir:    {}\n", qchem_loc).as_bytes())?;
     msgs.write(format!(" |  calling:   {}\n", qchem_call).as_bytes())?;
 
-    // Load rem lines
+    // Load calculation details
+    let calc = parse_gau_ein(infile);
+    println!("{:?}", calc);
+
+    // // Load rem lines
+    // msgs.write("-+- $rem data -------------------------------------\n".as_bytes())?;
+    // let rem = format!(
+    //     "$rem\n{}\njobtype {}\n$end",
+    //     read_to_string(remfile)?,
+    //     jobtype
+    // );
+    // msgs.write(rem.as_bytes())?;
 
     // let lumos = BTreeSet::from_iter(
     //     matches

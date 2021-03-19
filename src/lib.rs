@@ -1,6 +1,8 @@
+use std::convert::TryInto;
 use std::fs::{read_to_string, File};
 use std::io::{BufRead, BufReader, Error, ErrorKind, Result, Write};
 use std::path::Path;
+use std::str::FromStr;
 
 const CONV_FACTOR: f64 = 4.46552493159e-4;
 
@@ -36,22 +38,23 @@ fn parse_energy(p: &Path) -> Result<f64> {
     }
 }
 
-fn parse_floats_from_file(n: u8, p: &Path) -> Result<Vec<f64>> {
+fn parse_nums_from_str<T: FromStr>(n: u8, data: String) -> Result<Vec<T>> {
     // Parse a vector of floats from a file.
-    let nums: std::result::Result<Vec<_>, _> = read_to_string(p)?
-        .split_whitespace()
-        .map(|x| x.parse::<f64>())
-        .collect();
+    let nums: std::result::Result<Vec<_>, _> =
+        data.split_whitespace().map(|x| x.parse::<T>()).collect();
 
     match nums {
         Ok(i) => {
             if i.len() == n.into() {
                 Ok(i)
             } else {
-                Err(Error::new(ErrorKind::Other, "fewer floats than expected"))
+                Err(Error::new(
+                    ErrorKind::Other,
+                    format!("expected {} values, got {}", n, i.len()),
+                ))
             }
         }
-        Err(_) => Err(Error::new(ErrorKind::Other, "failed to parse floats")),
+        Err(_) => Err(Error::new(ErrorKind::Other, "failed to parse values")),
     }
 }
 
@@ -72,8 +75,10 @@ pub fn qchem_translate_to_gaussian(
 
     // derivatives
     if nder > 0 {
-        let mut data =
-            parse_floats_from_file(3 * natoms, &Path::new(&qchem_loc).join("efield.dat"))?;
+        let mut data = parse_nums_from_str::<f64>(
+            3 * natoms,
+            read_to_string(Path::new(&qchem_loc).join("efield.dat"))?,
+        )?;
         for _ in 0..natoms {
             for el in data.drain(..3) {
                 outfile.write(format!("{:+20.12}", el).as_bytes())?;
@@ -89,8 +94,10 @@ pub fn qchem_translate_to_gaussian(
     // hessian
     if nder > 1 {
         let n_hessian = (3 * natoms) * (3 * natoms + 1) / 2;
-        let mut data =
-            parse_floats_from_file(n_hessian, &Path::new(&qchem_loc).join("hessian.dat"))?;
+        let mut data = parse_nums_from_str::<f64>(
+            n_hessian,
+            read_to_string(Path::new(&qchem_loc).join("hessian.dat"))?,
+        )?;
         for _ in 0..(n_hessian / 3) {
             for el in data.drain(..3) {
                 outfile.write(format!("{:+20.12}", el * CONV_FACTOR).as_bytes())?;
@@ -99,4 +106,54 @@ pub fn qchem_translate_to_gaussian(
         }
     }
     Ok(())
+}
+
+#[derive(Debug)]
+pub struct Calculation {
+    natoms: usize,
+    nder: usize,
+    charge: i8,
+    spin: i8,
+    z: Vec<u8>,
+    coords: Vec<[f64; 3]>,
+}
+
+pub fn parse_gau_ein(infile: &str) -> Result<Calculation> {
+    let gaussfile = read_to_string(infile)?;
+    let mut gauss = gaussfile.lines();
+    if let Some(header) = gauss.next() {
+        // Parse
+        let entries = parse_nums_from_str::<i8>(4, header.to_string())?;
+        let natoms: usize = entries[0].try_into().unwrap();
+        let nder: usize = entries[1].try_into().unwrap();
+        let charge: i8 = entries[2];
+        let spin: i8 = entries[3];
+        let mut coords = Vec::new();
+        let mut zvals = Vec::<u8>::new();
+
+        for _ in 0..natoms {
+            if let Some(line) = gauss.next() {
+                let (start, end) = line.split_at(11);
+                let atom = parse_nums_from_str::<u8>(1, start.to_string())?[0];
+                let vals = parse_nums_from_str::<f64>(4, end.to_string())?;
+                coords.push([vals[0], vals[1], vals[2]]);
+                zvals.push(atom);
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "Gaussian input file is truncated",
+                ));
+            }
+        }
+        Ok(Calculation {
+            natoms: natoms,
+            nder: nder,
+            charge: charge,
+            spin: spin,
+            z: zvals,
+            coords: coords,
+        })
+    } else {
+        Err(Error::new(ErrorKind::Other, "Gaussian input file is empty"))
+    }
 }
