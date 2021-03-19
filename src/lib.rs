@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 use std::fs::{read_to_string, File};
-use std::io::{BufRead, BufReader, Error, ErrorKind, Result, Write};
+use std::io::{Error, ErrorKind, Result, Write};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -54,15 +54,15 @@ fn parse_nums_from_str<T: FromStr>(n: u16, data: String) -> Result<Vec<T>> {
 pub fn qchem_translate_to_gaussian(
     gaussian_out: &str,
     calc: &Calculation,
-    qchem_loc: &str,
-    stdout: &str,
+    qchem_loc: &Path,
+    qchem_out: &Path,
 ) -> Result<()> {
     let mut outfile = File::create(gaussian_out)?;
     let natoms: u16 = calc.natoms.try_into().unwrap();
     let nder = calc.nder;
 
     // energy
-    let energy = parse_energy(stdout)?;
+    let energy = parse_energy(&read_to_string(qchem_out)?)?;
     outfile.write(format!("{:+20.12}", energy).as_bytes())?;
 
     // dipole

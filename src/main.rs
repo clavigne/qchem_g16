@@ -3,7 +3,7 @@ use extgauss::{parse_gau_ein, qchem_translate_to_gaussian};
 use num_cpus;
 use std::env;
 use std::fs::{read_to_string, File};
-use std::io::{BufRead, BufReader, Error, ErrorKind, Result, Write};
+use std::io::{Result, Write};
 use std::path::Path;
 use std::process::Command;
 
@@ -40,6 +40,12 @@ fn main() -> Result<()> {
     let num_threads = env::var("OMP_NUM_THREADS").unwrap_or(num_cpus::get().to_string());
     let qchem_args = ["-nt", &num_threads];
 
+    // paths that we will need
+    let qchem_dir = Path::new(&qchem_loc);
+    let qchem_inp = qchem_dir.join("qchem.inp");
+    let qchem_out = qchem_dir.join("qchem.out");
+    let qchem_scratch = qchem_dir.join("qchem.scratch");
+
     let mut msgs = File::create(msgfile)?;
     msgs.write(
         format!(
@@ -57,14 +63,14 @@ fn main() -> Result<()> {
 
     // Load calculation details
     let calc = parse_gau_ein(infile)?;
-    let jobtype = match calc.nder {
-        0 => "sp",
-        1 => "force",
-        2 => "freq",
-        _ => "",
+    let (jobtype, hess_and_grad) = match calc.nder {
+        0 => ("sp", ""),
+        1 => ("force", ""),
+        2 => ("freq", "hess_and_grad true\n"),
+        _ => ("", ""),
     };
 
-    let scf_guess = match Path::new(&qchem_loc).join("qchem.scratch").is_dir() {
+    let scf_guess = match qchem_scratch.is_dir() {
         true => "scf_guess read\n",
         false => "",
     };
@@ -88,12 +94,14 @@ fn main() -> Result<()> {
          jobtype {}\n\
          qm_mm true\n\
          qmmm_print true\n\
-         hess_and_grad true\n\
+         input_bohr true\n\
+         {}
          $end\n",
         mol,
         read_to_string(remfile)?.trim(),
         scf_guess,
-        jobtype
+        jobtype,
+        hess_and_grad
     );
 
     msgs.write(
@@ -110,17 +118,29 @@ fn main() -> Result<()> {
         .as_bytes(),
     )?;
 
+    File::create(&qchem_inp)?.write(rem.as_bytes())?;
+
     let qchem = Command::new(qchem_exe)
         .args(&qchem_args)
-        .current_dir(&qchem_loc)
+        .arg(&qchem_inp)
+        .arg(&qchem_out)
+        .arg(&qchem_scratch)
+        .current_dir(&qchem_dir)
         .output();
 
-    let qchem_out = match qchem {
+    let qchem_stdout = match qchem {
         Ok(val) => std::str::from_utf8(&val.stdout).unwrap().to_string(),
         Err(e) => format!("Calling QChem failed\n {:?}\n", e),
     };
-    msgs.write(&qchem_out.as_bytes());
-    qchem_translate_to_gaussian(outfile, &calc, &qchem_loc, &qchem_out)?;
+    msgs.write(&qchem_stdout.as_bytes())?;
+    qchem_translate_to_gaussian(outfile, &calc, &qchem_dir, &qchem_out)?;
+
+    // delete dat files
+    let _ = Command::new("rm")
+        .arg("efield.dat")
+        .arg("hessian.dat")
+        .current_dir(&qchem_dir)
+        .output();
 
     Ok(())
 }
