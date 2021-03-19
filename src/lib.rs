@@ -110,12 +110,12 @@ pub fn qchem_translate_to_gaussian(
 
 #[derive(Debug)]
 pub struct Calculation {
-    natoms: usize,
-    nder: usize,
-    charge: i8,
-    spin: i8,
-    z: Vec<u8>,
-    coords: Vec<[f64; 3]>,
+    pub natoms: usize,
+    pub nder: usize,
+    pub charge: i8,
+    pub spin: i8,
+    pub z: Vec<u8>,
+    pub coords: Vec<[f64; 3]>,
 }
 
 pub fn parse_gau_ein(infile: &str) -> Result<Calculation> {

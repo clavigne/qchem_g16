@@ -52,32 +52,27 @@ fn main() -> Result<()> {
     msgs.write(format!(" |  calling:   {}\n", qchem_call).as_bytes())?;
 
     // Load calculation details
-    let calc = parse_gau_ein(infile);
-    println!("{:?}", calc);
+    let calc = parse_gau_ein(infile)?;
+    let jobtype = match calc.nder {
+        0 => "sp",
+        1 => "force",
+        2 => "freq",
+        _ => "",
+    };
 
-    // // Load rem lines
-    // msgs.write("-+- $rem data -------------------------------------\n".as_bytes())?;
-    // let rem = format!(
-    //     "$rem\n{}\njobtype {}\n$end",
-    //     read_to_string(remfile)?,
-    //     jobtype
-    // );
-    // msgs.write(rem.as_bytes())?;
+    // Load rem lines
+    msgs.write("-+- $rem data -------------------------------------\n".as_bytes())?;
+    let rem = format!(
+        "$rem\n{}\n\
+         jobtype {}\n\
+         qm_mm true\n\
+         qmmm_print true\n\
+         hess_and_grad true\n\
+         $end\n",
+        read_to_string(remfile)?,
+        jobtype
+    );
+    msgs.write(rem.as_bytes())?;
 
-    // let lumos = BTreeSet::from_iter(
-    //     matches
-    //         .values_of_t::<usize>("lumo")
-    //         .unwrap_or_else(|e| e.exit()),
-    // );
-
-    // // number of total electrons, active orbitals and active electrons
-    // let nel = match matches.value_of_t::<usize>("nel") {
-    //     Ok(i) => i,
-    //     Err(e) => e.exit(),
-    // };
-
-    // let nder = 2;
-    // let output = "gamout";
-    // qchem_translate_to_gaussian(3, nder, &qchem_loc, output)?;
     Ok(())
 }
