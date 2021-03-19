@@ -6,17 +6,10 @@ use std::str::FromStr;
 
 const CONV_FACTOR: f64 = 4.46552493159e-4;
 
-fn parse_energy(p: &Path) -> Result<f64> {
-    let f = File::open(p)?;
-    let f = BufReader::new(f);
-    let eline = f
+fn parse_energy(qchem_out: &str) -> Result<f64> {
+    let eline = qchem_out
         .lines()
-        .filter_map(|x| match x {
-            Ok(val) => val
-                .starts_with(" The QM part of the energy is")
-                .then(|| val),
-            Err(_) => None,
-        })
+        .filter(|x| x.starts_with(" The QM part of the energy is"))
         .next();
     // now an Option(str)
     let out = match eline {
@@ -38,7 +31,7 @@ fn parse_energy(p: &Path) -> Result<f64> {
     }
 }
 
-fn parse_nums_from_str<T: FromStr>(n: u8, data: String) -> Result<Vec<T>> {
+fn parse_nums_from_str<T: FromStr>(n: u16, data: String) -> Result<Vec<T>> {
     // Parse a vector of floats from a file.
     let nums: std::result::Result<Vec<_>, _> =
         data.split_whitespace().map(|x| x.parse::<T>()).collect();
@@ -59,15 +52,17 @@ fn parse_nums_from_str<T: FromStr>(n: u8, data: String) -> Result<Vec<T>> {
 }
 
 pub fn qchem_translate_to_gaussian(
-    natoms: u8,
-    nder: u8,
+    gaussian_out: &str,
+    calc: &Calculation,
     qchem_loc: &str,
-    output_file: &str,
+    stdout: &str,
 ) -> Result<()> {
-    let mut outfile = File::create(output_file)?;
+    let mut outfile = File::create(gaussian_out)?;
+    let natoms: u16 = calc.natoms.try_into().unwrap();
+    let nder = calc.nder;
 
     // energy
-    let energy = parse_energy(&Path::new(&qchem_loc).join("qchem.out"))?;
+    let energy = parse_energy(stdout)?;
     outfile.write(format!("{:+20.12}", energy).as_bytes())?;
 
     // dipole
@@ -116,6 +111,19 @@ pub struct Calculation {
     pub spin: i8,
     pub z: Vec<u8>,
     pub coords: Vec<[f64; 3]>,
+}
+
+impl Calculation {
+    pub fn get_geometry(&self) -> String {
+        let mut output = String::new();
+        for i in 0..self.natoms {
+            output.push_str(&format!(
+                "{}   {}   {}   {}\n",
+                self.z[i], self.coords[i][0], self.coords[i][1], self.coords[i][2]
+            ));
+        }
+        output.trim().to_string()
+    }
 }
 
 pub fn parse_gau_ein(infile: &str) -> Result<Calculation> {
