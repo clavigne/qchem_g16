@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::fs::{read_to_string, File};
 use std::io::{Error, ErrorKind, Result, Write};
@@ -89,16 +90,45 @@ pub fn qchem_translate_to_gaussian(
     // hessian
     if nder > 1 {
         let n_hessian = (3 * natoms) * (3 * natoms + 1) / 2;
-        let mut data = parse_nums_from_str::<f64>(
+        let data = parse_nums_from_str::<f64>(
             n_hessian,
             read_to_string(Path::new(&qchem_loc).join("hessian.dat"))?,
         )?;
-        for _ in 0..(n_hessian / 3) {
-            for el in data.drain(..3) {
-                outfile.write(format!("{:+20.12}", el * CONV_FACTOR).as_bytes())?;
+
+        // Maybe I should have used fortran. Some annoying indexing going down
+        // in the next bit. Don't touch! it works.
+
+        // Basically, the hessian.dat is in Upper triangular, atom first order
+        // and the gaussian output is in Lower triangular, coordinate first.
+        let mut k = 0;
+        let mut hess = HashMap::new();
+        for i in 0..(3 * natoms) {
+            for j in i..(3 * natoms) {
+                hess.insert((i, j), data[k] * CONV_FACTOR);
+                hess.insert((j, i), data[k] * CONV_FACTOR);
+                k += 1;
             }
-            outfile.write("\n".as_bytes())?;
         }
+
+        let mut count = 0;
+        for i in 0..natoms {
+            for ix in 0..3 {
+                for j in 0..natoms {
+                    for jx in 0..3 {
+                        let left = 3 * i + ix;
+                        let right = 3 * j + jx;
+                        if left >= right {
+                            count += 1;
+                            outfile.write(format!("{:+20.12}", hess[&(left, right)]).as_bytes())?;
+                            if count % 3 == 0 {
+                                outfile.write("\n".as_bytes())?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        outfile.write("\n".as_bytes())?;
     }
     Ok(())
 }
