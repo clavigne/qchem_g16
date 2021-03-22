@@ -1,5 +1,4 @@
-use clap::{crate_version, App, Arg};
-use num_cpus;
+use clap::{crate_version, App};
 use qchem_g16::{parse_gau_ein, qchem_translate_to_gaussian};
 use std::env;
 use std::fs::{read_to_string, File};
@@ -31,20 +30,15 @@ should it include a $molecule section; these will be filled in by this script.
 ",
         )
         .version(crate_version!())
-        .arg("<Layer>              'Layer of an ONIOM calculation.'")
-        .arg("<InputFile>          'Input to external program.'")
-        .arg("<OutputFile>         'Output from external program.'")
-        .arg("<MsgFile>            'Messages for Gaussian.'")
-        .arg("[FChkFile]           'Formatted checkpoint file.'")
-        .arg("[MatElFile]          'Matrix elements.'")
-        .arg(
-            Arg::new("rem")
-                .long("rem")
-                .value_name("REMFILE")
-                .about("File containing $rem options for QChem.")
-                .required(true)
-                .takes_value(true),
-        )
+        .arg("-r, --rem=<REM>      'File containing $rem options for QChem'")
+        .arg("-d, --dir=[DIR]      'QChem run directory [default=.]'")
+        .arg("-e, --exe=[EXE]      'QChem executable invocation [default=\"qchem\"]'")
+        .arg("<Layer>              'Layer of an ONIOM calculation'")
+        .arg("<InputFile>          'Input to external program'")
+        .arg("<OutputFile>         'Output from external program'")
+        .arg("<MsgFile>            'Messages for Gaussian'")
+        .arg("[FChkFile]           'Formatted checkpoint file'")
+        .arg("[MatElFile]          'Matrix elements'")
         .get_matches();
 
     // Get argument values
@@ -54,9 +48,9 @@ should it include a $molecule section; these will be filled in by this script.
     let remfile = matches.value_of("rem").unwrap();
 
     // get some env variables
-    let qchem_loc = env::var("EXTGAUSS_QCHEM_RUNDIR").unwrap_or(".".to_string());
-    let qchem_exe = env::var("EXTGAUSS_QCHEM_EXE").unwrap_or("qchem".to_string());
-    let num_threads = env::var("OMP_NUM_THREADS").unwrap_or(num_cpus::get().to_string());
+    let qchem_loc = matches.value_of("dir").unwrap_or(".");
+    let qchem_exe = matches.value_of("exe").unwrap_or("qchem");
+    let num_threads = env::var("OMP_NUM_THREADS").unwrap_or("1".to_string());
     let qchem_args = ["-nt", &num_threads];
 
     // paths that we will need
