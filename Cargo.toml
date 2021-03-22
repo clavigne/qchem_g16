@@ -1,11 +1,11 @@
 [package]
-name = "extgauss-rs"
+name = "qchem_g16"
 version = "0.1.0"
 authors = ["Cyrille Lavigne <clavigne@chem.utoronto.ca>"]
 edition = "2018"
 
 [lib]
-name = "extgauss"
+name = "qchem_g16"
 path = "src/lib.rs"
 
 [dependencies]

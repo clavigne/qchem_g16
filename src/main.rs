@@ -1,6 +1,6 @@
 use clap::{crate_version, App, Arg};
-use extgauss::{parse_gau_ein, qchem_translate_to_gaussian};
 use num_cpus;
+use qchem_g16::{parse_gau_ein, qchem_translate_to_gaussian};
 use std::env;
 use std::fs::{read_to_string, File};
 use std::io::{Result, Write};
@@ -8,9 +8,22 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() -> Result<()> {
-    let matches = App::new("extgaussian-rs")
+    let matches = App::new("qchem_g16")
         .author("Cyrille Lavigne <cyrille.lavigne@mail.utoronto.ca>")
-        .about("TODO")
+        .about(
+            "\
+\n\
+This is a Gaussian 16 interface to use Q-Chem as an external calculator. It is
+meant to be called from within Gaussian 16 using the External keyword and the
+following invocation (where qchem_g16 is on $PATH),
+
+# external=\"qchem_g16 --rem params.rem\"
+
+Here, params.rem is a QChem parameter file. It should contain at least a $rem
+section with method and basis arguments. It should *not* include jobtype, nor
+should it include a $molecule section; these will be filled in by this script.
+",
+        )
         .version(crate_version!())
         .arg("<Layer>              'Layer of an ONIOM calculation.'")
         .arg("<InputFile>          'Input to external program.'")
