@@ -1,1 +1,14 @@
+$comment
+this is a qchem/gaussian run
+$end
+
+$rem
 method hf
+basis 6-31g
+solvent_method    onsager
+$end
+
+
+$solvent
+   CavityRadius    2.5
+$end

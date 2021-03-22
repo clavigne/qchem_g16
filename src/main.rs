@@ -7,6 +7,12 @@ use std::io::{Result, Write};
 use std::path::Path;
 use std::process::Command;
 
+fn extract_rem(input: &str) -> (String, String) {
+    let (before, rem1) = input.split_at(input.find("$rem").expect("no $rem input"));
+    let (rem, after) = rem1.split_at(rem1.find("$end").expect("no $end to $rem input"));
+    (rem.to_string(), [after, "\n", before].concat())
+}
+
 fn main() -> Result<()> {
     let matches = App::new("qchem_g16")
         .author("Cyrille Lavigne <cyrille.lavigne@mail.utoronto.ca>")
@@ -98,23 +104,19 @@ should it include a $molecule section; these will be filled in by this script.
         calc.spin,
         calc.get_geometry()
     );
+    let parameters = read_to_string(remfile)?;
+    let (rem, extras) = extract_rem(parameters.trim());
 
     // Make qchem input
     let rem = format!(
         "{}\n\
-         $rem\n{}\n\
-         {}\
+         {}{}\
          jobtype {}\n\
          qm_mm true\n\
          qmmm_print true\n\
          input_bohr true\n\
-         {}
-         $end\n",
-        mol,
-        read_to_string(remfile)?.trim(),
-        scf_guess,
-        jobtype,
-        hess_and_grad
+         {}{}",
+        mol, rem, scf_guess, jobtype, hess_and_grad, extras
     );
 
     msgs.write(
