@@ -131,9 +131,10 @@ should it include a $molecule section; these will be filled in by this script.
 
     let qchem = Command::new(qchem_exe)
         .args(&qchem_args)
-        .arg(&qchem_inp)
-        .arg(&qchem_out)
-        .arg(&qchem_scratch)
+        // these are not relative paths because we are calling qchem from $run_dir
+        .arg("qchem.inp")
+        .arg("qchem.out")
+        .arg("qchem.scratch")
         .current_dir(&qchem_dir)
         .output();
 
