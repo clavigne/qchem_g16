@@ -63,7 +63,7 @@ pub fn qchem_translate_to_gaussian(
     let nder = calc.nder;
 
     // energy
-    let energy = parse_energy(&read_to_string(qchem_out)?)?;
+    let energy = parse_energy(&read_to_string(qchem_out).expect("qchem output could not be read"))?;
     outfile.write(format!("{:+20.12}", energy).as_bytes())?;
 
     // dipole
@@ -73,7 +73,8 @@ pub fn qchem_translate_to_gaussian(
     if nder > 0 {
         let mut data = parse_nums_from_str::<f64>(
             3 * natoms,
-            read_to_string(Path::new(&qchem_loc).join("efield.dat"))?,
+            read_to_string(Path::new(&qchem_loc).join("efield.dat"))
+                .expect("efield.dat could not be read"),
         )?;
         for _ in 0..natoms {
             for el in data.drain(..3) {
@@ -92,7 +93,8 @@ pub fn qchem_translate_to_gaussian(
         let n_hessian = (3 * natoms) * (3 * natoms + 1) / 2;
         let data = parse_nums_from_str::<f64>(
             n_hessian,
-            read_to_string(Path::new(&qchem_loc).join("hessian.dat"))?,
+            read_to_string(Path::new(&qchem_loc).join("hessian.dat"))
+                .expect("hessian.dat could not be read"),
         )?;
 
         // Maybe I should have used fortran. Some annoying indexing going down
