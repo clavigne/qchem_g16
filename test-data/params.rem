@@ -1,14 +1,12 @@
-$comment
-this is a qchem/gaussian run
-$end
-
 $rem
-method hf
-basis 6-31g
-solvent_method    onsager
+method  pbe
+basis def2-SVP
+symmetry false
+sym_ignore true
+ecp def2-ecp
+mem_total 35000
 $end
 
-
-$solvent
-   CavityRadius    2.5
+$comment
+this is a test run
 $end

@@ -1,7 +1,7 @@
 
-Running Job 1 of 1 charmm.inp
-qchem charmm.inp_112504.0 ./charmm.save/ 0
-/gpfs/fs1/scinet/niagara/software/commercial/qc53/exe/qcprog.exe_s charmm.inp_112504.0 ./charmm.save/
+Running Job 1 of 1 qchem.inp
+qchem qchem.inp_275543.0 ./qchem.scratch/ 0
+/gpfs/fs1/scinet/niagara/software/commercial/qc53/exe/qcprog.exe_s qchem.inp_275543.0 ./qchem.scratch/
                   Welcome to Q-Chem
      A Quantum Leap Into The Future Of Chemistry
 
@@ -78,45 +78,70 @@ qchem charmm.inp_112504.0 ./charmm.save/ 0
  Parts of Q-Chem use Armadillo 9.800.1 (Horizon Scraper).
  http://arma.sourceforge.net/
 
- Q-Chem begins on Thu Mar 18 14:55:55 2021  
+ Q-Chem begins on Sun Mar 28 10:49:02 2021  
 
 Host: 
 0
 
-     Scratch files written to ./charmm.save//
+     Scratch files written to ./qchem.scratch//
  Dec820 |scratch|qcdevops|jenkins|workspace|build_RNUM 6959   
 Processing $rem in /gpfs/fs1/scinet/niagara/software/commercial/qc53/config/preferences:
 Processing $rem in /home/p/pbrumer/clavigne/.qchemrc:
+Requested ECP is DEF2-ECP
 
 Checking the input file for inconsistencies... 	...done.
+
+--------------------------------------------------------------
+User input:
+--------------------------------------------------------------
+$molecule
+0 1
+1   0   0   0.944863062283
+1   0   0   -0.944863062283
+$end
+
+$rem
+method  pbe
+basis def2-SVP
+symmetry false
+sym_ignore true
+ecp def2-ecp
+mem_total 35000
+scf_guess read
+jobtype freq
+input_bohr true
+hess_and_grad true
+vibman_print 6
+$end
+
+$comment
+this is a test run
+$end
+--------------------------------------------------------------
  ----------------------------------------------------------------
-             Standard Nuclear Orientation (Angstroms)
+             Standard Nuclear Orientation (Bohr)
     I     Atom           X                Y                Z
  ----------------------------------------------------------------
-    1      O       1.0541800000     0.0316100000    -0.0536100000
-    2      H       0.7753300000    -0.4894900000    -0.8215100000
-    3      H       2.0220700000     0.0055300000    -0.0920300000
+    1      H       0.0000000000     0.0000000000     0.9448630623
+    2      H       0.0000000000     0.0000000000    -0.9448630623
  ----------------------------------------------------------------
- Nuclear Repulsion Energy =           9.08422225 hartrees
- There are        5 alpha and        5 beta electrons
- Requested basis set is 6-31G
- There are 7 shells and 13 basis functions
+ Nuclear Repulsion Energy =           0.52917721 hartrees
+ There are        1 alpha and        1 beta electrons
+ Requested basis set is def2-SVP
+ There are 6 shells and 10 basis functions
 
- Total QAlloc Memory Limit  20480 MB
- Mega-Array Size      2002 MB
+ Total QAlloc Memory Limit  35000 MB
+ Mega-Array Size      2018 MB
  MEM_STATIC part      2048 MB
 
-                       Distance Matrix (Angstroms)
-             O (  1)   H (  2)
-   H (  2)  0.969006
-   H (  3)  0.969003  1.526940
+                       Distance Matrix (Bohrs)
+             H (  1)
+   H (  2)  1.889726
  
- A cutoff of  1.0D-11 yielded     28 shell pairs
- There are       103 function pairs
- Smallest overlap matrix eigenvalue = 6.93E-02
- Guess from superposition of atomic densities
- Warning:  Energy on first SCF cycle will be non-variational
- SAD guess density has 10.000000 electrons
+ A cutoff of  1.0D-11 yielded     21 shell pairs
+ There are        61 function pairs
+ Smallest overlap matrix eigenvalue = 1.14E-01
+ Guess MOs from SCF MO coefficient file
 
  -----------------------------------------------------------------------
   General SCF calculation program by
@@ -125,28 +150,20 @@ Checking the input file for inconsistencies... 	...done.
   Daniel Levine, Susi Lehtola, Hugh Burton, Evgeny Epifanovsky,
   Bang C. Huynh
  -----------------------------------------------------------------------
- Hartree-Fock
+ Exchange:  PBE      Correlation:  PBE
+ Using SG-1 standard quadrature grid
  A restricted SCF calculation will be
  performed using DIIS
  SCF converges when DIIS error is below 1.0e-08
  ---------------------------------------
   Cycle       Energy         DIIS error
  ---------------------------------------
-    1     -75.8884524422      2.50e-01  
-    2     -75.9474386303      4.29e-02  
-    3     -75.9754122033      2.29e-02  
-    4     -75.9832185519      2.19e-03  
-    5     -75.9833775418      4.11e-04  
-    6     -75.9833845097      5.83e-05  
-    7     -75.9833846642      5.61e-06  
-    8     -75.9833846654      1.10e-06  
-    9     -75.9833846655      1.71e-07  
-   10     -75.9833846655      2.11e-08  
-   11     -75.9833846655      1.81e-09  Convergence criterion met
+    1      -1.1388981371      9.82e-11  
+    2      -1.1388981371      1.79e-11  Convergence criterion met
  ---------------------------------------
- SCF time:   CPU 0.06s  wall 0.00s 
- SCF   energy in the final basis set =      -75.9833846655
- Total energy in the final basis set =      -75.9833846655
+ SCF time:   CPU 0.04s  wall 0.00s 
+ SCF   energy in the final basis set =       -1.1388981371
+ Total energy in the final basis set =       -1.1388981371
  
  --------------------------------------------------------------
  
@@ -155,18 +172,18 @@ Checking the input file for inconsistencies... 	...done.
  
  Alpha MOs
  -- Occupied --
--20.5631  -1.3508  -0.7027  -0.5599  -0.5010
+ -0.3389
  -- Virtual --
-  0.2009   0.2965   1.0502   1.1643   1.1734   1.2177   1.3753   1.6974
+ -0.0087   0.3563   0.5488   1.1259   1.1259   1.4511   1.7004   1.7004
+  2.5788
  --------------------------------------------------------------
  
           Ground-State Mulliken Net Atomic Charges
 
      Atom                 Charge (a.u.)
   ----------------------------------------
-      1 O                    -0.792448
-      2 H                     0.396224
-      3 H                     0.396224
+      1 H                     0.000000
+      2 H                    -0.000000
   ----------------------------------------
   Sum of atomic charges =     0.000000
 
@@ -176,87 +193,122 @@ Checking the input file for inconsistencies... 	...done.
     Charge (ESU x 10^10)
                  0.0000
     Dipole Moment (Debye)
-         X       1.5263      Y      -1.2121      Z      -1.7861
-       Tot       2.6437
+         X      -0.0000      Y       0.0000      Z       0.0000
+       Tot       0.0000
     Quadrupole Moments (Debye-Ang)
-        XX      -1.4268     XY      -0.8885     YY      -6.6281
-        XZ      -1.4621     YZ       1.0109     ZZ      -5.5631
+        XX      -2.3369     XY       0.0000     YY      -2.3369
+        XZ       0.0000     YZ      -0.0000     ZZ      -1.5127
     Octopole Moments (Debye-Ang^2)
-       XXX      -8.7294    XXY      -0.5998    XYY      -7.3418
-       YYY      -0.3003    XXZ      -0.7407    XYZ       0.8646
-       YYZ       0.3227    XZZ      -6.4476    YZZ      -0.6533
-       ZZZ       0.9427
+       XXX      -0.0000    XXY       0.0000    XYY      -0.0000
+       YYY       0.0000    XXZ       0.0000    XYZ      -0.0000
+       YYZ       0.0000    XZZ      -0.0000    YZZ       0.0000
+       ZZZ       0.0000
     Hexadecapole Moments (Debye-Ang^3)
-      XXXX     -25.2469   XXXY      -0.4345   XXYY     -10.1782
-      XYYY      -0.3504   YYYY      -5.5418   XXXZ       0.2345
-      XXYZ       0.6565   XYYZ       0.4288   YYYZ      -0.1225
-      XXZZ      -9.5413   XYZZ      -0.5331   YYZZ      -1.7006
-      XZZZ       1.2275   YZZZ       0.2354   ZZZZ      -5.6443
+      XXXX      -2.4913   XXXY       0.0000   XXYY      -0.8304
+      XYYY       0.0000   YYYY      -2.4913   XXXZ       0.0000
+      XXYZ      -0.0000   XYYZ       0.0000   YYYZ      -0.0000
+      XXZZ      -1.1955   XYZZ       0.0000   YYZZ      -1.1955
+      XZZZ       0.0000   YZZZ      -0.0000   ZZZZ      -4.4278
  -----------------------------------------------------------------
- Electrostatic potential will be computed using the SCF density
-   ... ESP and EField will be evaluated at nuclei
-  --- DONE ESP SUMMARY ---
- The QM part of the energy is   -75.9833846654808     
  Calculating analytic gradient of the SCF energy
  Gradient of SCF Energy
-            1           2           3
-    1  -0.0213980   0.0071968   0.0142012
-    2   0.0169947  -0.0098885  -0.0071062
-    3   0.0250433  -0.0145717  -0.0104716
- Max gradient component =       2.504E-02
- RMS gradient           =       1.527E-02
+            1           2
+    1  -0.0000000   0.0000000
+    2   0.0000000  -0.0000000
+    3   0.0793038  -0.0793038
+ Max gradient component =       7.930E-02
+ RMS gradient           =       4.579E-02
  Calculating MO derivatives via CPSCF
-    1     0    12    0.0618757  
-    2     0    12    0.0166761  
-    3     0    12    0.0009580  
-    4     0    12    0.0000877  
-    5    12     0    0.0000000  Converged
+    1     6     3    0.1440690  
+    2     8     1    0.0012369  
+    3     9     0    0.0000000  Converged
  Time for AOints: 0.0 s (CPU) 0.0 s (wall)
  ------------------------------------------------------------------------------
                      AOints        : Timing summary (seconds)
  ------------------------------------------------------------------------------
      job step          cpu (% of tot)      sys (% of tot)     wall (% of tot)
  ------------------------------------------------------------------------------
-  AOints            0.5111E-02 ( 6.0)   0.0000E+00 ( 0.0)   0.5122E-02 ( 5.8)
+  AOints            0.3089E-02 ( 1.6)   0.0000E+00 ( 0.0)   0.3096E-02 ( 1.0)
  ------------------------------------------------------------------------------
-   Grand Totals     0.8453E-01          0.3000E-05          0.8762E-01
+   Grand Totals     0.1894E+00          0.2000E-05          0.3036E+00
  ------------------------------------------------------------------------------
  Polarizability Matrix (a.u.)
             1           2           3
-    1  -6.1189155  -0.6155324  -0.9071101
-    2  -0.6155324  -2.6265166  -1.8439661
-    3  -0.9071101  -1.8439661  -4.0924859
+    1  -1.1025698  -0.0000000   0.0000000
+    2  -0.0000000  -1.1025698   0.0000000
+    3   0.0000000   0.0000000 -10.3464393
  Calculating analytic Hessian of the SCF energy
  
  Direct stationary perturbation theory relativistic correction:
  
- rels  =       0.032346929090
- relv  =      -0.111221104733
- rel2e =       0.024217997600
- E_rel =      -0.054656178043
+ rels  =       0.000008450410
+ relv  =      -0.000036063785
+ rel2e =       0.000000000000
+ E_rel =      -0.000027613375
  
-i'm in write hessian test
  Hessian of the SCF Energy
             1           2           3           4           5           6
-    1   0.5938082   0.0584328   0.0861138  -0.0972772  -0.0891958  -0.1314405
-    2   0.0584328   0.1865304   0.2264361  -0.0485002  -0.1562075  -0.2059693
-    3   0.0861138   0.2264361   0.3665486  -0.0714713  -0.2059698  -0.3199550
-    4  -0.0972772  -0.0485002  -0.0714713   0.1209246   0.0835035   0.1230528
-    5  -0.0891958  -0.1562075  -0.2059698   0.0835035   0.1532360   0.2115093
-    6  -0.1314405  -0.2059693  -0.3199550   0.1230528   0.2115093   0.3213881
-    7  -0.4965310  -0.0099326  -0.0146425  -0.0236475   0.0056922   0.0083877
-    8   0.0307630  -0.0303230  -0.0204663  -0.0350033   0.0029715  -0.0055401
-    9   0.0453268  -0.0204668  -0.0465936  -0.0515815  -0.0055396  -0.0014330
-            7           8           9
-    1  -0.4965310   0.0307630   0.0453268
-    2  -0.0099326  -0.0303230  -0.0204668
-    3  -0.0146425  -0.0204663  -0.0465936
-    4  -0.0236475  -0.0350033  -0.0515815
-    5   0.0056922   0.0029715  -0.0055396
-    6   0.0083877  -0.0055401  -0.0014330
-    7   0.5201785   0.0042403   0.0062547
-    8   0.0042403   0.0273514   0.0260063
-    9   0.0062547   0.0260063   0.0480266
+    1   0.0419670   0.0000000   0.0000000  -0.0419670  -0.0000000  -0.0000000
+    2   0.0000000   0.0419670  -0.0000000  -0.0000000  -0.0419670   0.0000000
+    3   0.0000000  -0.0000000   0.0716491  -0.0000000   0.0000000  -0.0716491
+    4  -0.0419670  -0.0000000  -0.0000000   0.0419670   0.0000000   0.0000000
+    5  -0.0000000  -0.0419670   0.0000000   0.0000000   0.0419670  -0.0000000
+    6  -0.0000000   0.0000000  -0.0716491   0.0000000  -0.0000000   0.0716491
+
+ Mass-Weighted Hessian Matrix:
+
+
+     0.041641    0.000000    0.000000   -0.041641   -0.000000   -0.000000
+     0.000000    0.041641   -0.000000   -0.000000   -0.041641    0.000000
+     0.000000   -0.000000    0.071092   -0.000000    0.000000   -0.071092
+    -0.041641   -0.000000   -0.000000    0.041641    0.000000    0.000000
+    -0.000000   -0.041641    0.000000    0.000000    0.041641   -0.000000
+    -0.000000    0.000000   -0.071092    0.000000   -0.000000    0.071092
+
+ Vectors for Translations and Rotations
+
+
+     0.707107    0.000000    0.000000    0.000000   -0.707107    0.000000
+     0.000000    0.707107    0.000000    0.000000    0.000000    0.707107
+     0.000000    0.000000    0.707107    0.000000    0.000000    0.000000
+     0.707107    0.000000    0.000000    0.000000    0.707107    0.000000
+     0.000000    0.707107    0.000000    0.000000    0.000000   -0.707107
+     0.000000    0.000000    0.707107    0.000000    0.000000    0.000000
+
+ The Projection Matrix
+
+
+     0.000000    0.000000    0.000000   -0.000000    0.000000    0.000000
+     0.000000    0.000000    0.000000    0.000000   -0.000000    0.000000
+     0.000000    0.000000    0.500000    0.000000    0.000000   -0.500000
+    -0.000000    0.000000    0.000000    0.000000    0.000000    0.000000
+     0.000000   -0.000000    0.000000    0.000000    0.000000    0.000000
+     0.000000    0.000000   -0.500000    0.000000    0.000000    0.500000
+
+ Translations and Rotations Projected Out of Hessian
+
+ Projected Mass-Weighted Hessian Matrix:
+
+
+     0.000000    0.000000    0.000000   -0.000000   -0.000000   -0.000000
+     0.000000    0.000000   -0.000000   -0.000000   -0.000000    0.000000
+     0.000000   -0.000000    0.071092   -0.000000    0.000000   -0.071092
+    -0.000000   -0.000000   -0.000000    0.000000    0.000000    0.000000
+    -0.000000   -0.000000    0.000000    0.000000    0.000000   -0.000000
+    -0.000000    0.000000   -0.071092    0.000000   -0.000000    0.071092
+
+ Eigenvectors of Proj. Mass-Weighted Hessian Matrix:
+
+
+     0.000000    0.707107    0.000000   -0.000000   -0.707107    0.000000
+     0.525731    0.000000   -0.000000    0.850651   -0.000000   -0.000000
+     0.000000   -0.000000    0.707107    0.000000    0.000000    0.707107
+    -0.000000    0.707107   -0.000000    0.000000    0.707107   -0.000000
+     0.850651   -0.000000    0.000000   -0.525731    0.000000    0.000000
+     0.000000    0.000000    0.707107    0.000000    0.000000   -0.707107
+
+ Vibrational Frequencies in atomic units
+    -0.0000000000   -0.0000000000    0.0000000000    0.0000000000    0.0000000000    0.1421848675
  **********************************************************************
  **                                                                  **
  **                       VIBRATIONAL ANALYSIS                       **
@@ -269,51 +321,55 @@ i'm in write hessian test
  **********************************************************************
  
 
- Mode:                 1                      2                      3
- Frequency:      1851.20                3758.09                3845.82
- Force Cnst:      2.1971                 8.6550                 9.4230
- Red. Mass:       1.0882                 1.0401                 1.0813
- IR Active:          YES                    YES                    YES
- IR Intens:       93.661                  1.152                 21.166
- Raman Active:       YES                    YES                    YES
+ Mode:                 1
+ Frequency:      1938.35
+ Force Cnst:      2.2310
+ Red. Mass:       1.0078
+ IR Active:          YES
+ IR Intens:        0.000
+ Raman Active:       YES
                X      Y      Z        X      Y      Z        X      Y      Z
- O         -0.042  0.034  0.049   -0.027  0.021  0.031   -0.057 -0.023 -0.033
- H          0.662 -0.137 -0.202   -0.280 -0.364 -0.537    0.203  0.379  0.559
- H          0.009 -0.396 -0.583    0.705  0.027  0.039    0.705 -0.019 -0.028
- TransDip   0.179 -0.142 -0.209    0.020 -0.016 -0.023    0.120  0.048  0.070
+ H          0.000 -0.000  0.707
+ H         -0.000  0.000 -0.707
+ TransDip  -0.000  0.000  0.000
 
  STANDARD THERMODYNAMIC QUANTITIES AT   298.15 K  AND     1.00 ATM
 
    This Molecule has  0 Imaginary Frequencies
-   Zero point vibrational energy:       13.517 kcal/mol
+   Zero point vibrational energy:        2.771 kcal/mol
 
-   Atom    1 Element O  Has Mass   15.99491
+
+ Q-Chem warning in module 0, line  389:
+
+  SYM_IGNORE is turned on for a linear molecule
+
+    We detect a D*h symmetry
+   Atom    1 Element H  Has Mass    1.00783
    Atom    2 Element H  Has Mass    1.00783
-   Atom    3 Element H  Has Mass    1.00783
-   Molecular Mass:    18.010570 amu
+   Molecular Mass:     2.015660 amu
    Principal axes and moments of inertia in amu*Bohr^2:
                              1           2           3
-    Eigenvalues --        2.27626     4.19565     6.47191
-          X               0.81649    -0.57735     0.00001
-          Y               0.32419     0.45848     0.82746
-          Z               0.47774     0.67562    -0.56152
-   Rotational Symmetry Number is   1
-   The Molecule is an Asymmetric Top
+    Eigenvalues --        0.00000     1.79951     1.79951
+          X               0.00000     0.00000     1.00000
+          Y               0.00000     1.00000     0.00000
+          Z               1.00000     0.00000     0.00000
+   Rotational Symmetry Number is   2
+   The Molecule is a Symmetric Top
    Translational Enthalpy:        0.889 kcal/mol
    Rotational Enthalpy:           0.889 kcal/mol
-   Vibrational Enthalpy:         13.517 kcal/mol
+   Vibrational Enthalpy:          2.771 kcal/mol
    gas constant (RT):             0.592 kcal/mol
-   Translational Entropy:        34.608  cal/mol.K
-   Rotational Entropy:           11.900  cal/mol.K
-   Vibrational Entropy:           0.003  cal/mol.K
+   Translational Entropy:        28.080  cal/mol.K
+   Rotational Entropy:            4.234  cal/mol.K
+   Vibrational Entropy:           0.002  cal/mol.K
 
-   Total Enthalpy:               15.887 kcal/mol
-   Total Entropy:                46.511  cal/mol.K
+   Total Enthalpy:                5.141 kcal/mol
+   Total Entropy:                32.316  cal/mol.K
 Archival summary:
-1\1\nia-login02.scinet.local\FREQ\HF\6-31G\12\clavigne\ThuMar1814:55:552021ThuMar1814:55:552021\0\\#,FREQ,HF,6-31G,\\0,1\O\H,1,0.969003\H,1,0.969006,2,103.978\\HF=-75.9833847\\@
+1\1\nia0002.scinet.local\FREQ\ProcedureUnspecified\BasisUnspecified\2\clavigne\SunMar2810:49:032021SunMar2810:49:032021\0\\#,FREQ,ProcedureUnspecified,BasisUnspecified,\\0,1\H\H,1,1.88973\\\@
 
- Total job time:  0.29s(wall), 0.25s(cpu) 
- Thu Mar 18 14:55:55 2021
+ Total job time:  0.73s(wall), 0.38s(cpu) 
+ Sun Mar 28 10:49:03 2021
 
         *************************************************************
         *                                                           *
