@@ -11,7 +11,7 @@ optimization algos and QChem's fast integral evaluations.
 
 ## Installation
 
-`qchem_g16` is available as a statically-linked linux binary. Just download it
+`qchem_g16` is available as a [statically-linked linux binary.](https://github.com/clavigne/qchem_g16/releases/download/0.2/qchem_g16) Just download it
 and put it somewhere on `$PATH`.
 
 On other platforms, you can build it using [Cargo and rustc,](https://doc.rust-lang.org/cargo/getting-started/installation.html)
