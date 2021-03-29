@@ -1,13 +1,10 @@
-# qchem_g16
-
-> 🔥 Gaussian 16 x QChem 😮 !
-> 
-> The latest, hottest, limited collab from your favourite #brands! 
+# qchem_g16: a Gaussian 16 External interface to QChem
 
 Run QChem under the control of Gaussian 16 with `qchem_g16`.
 
-For example, you can use `qchem_g16` to leverage Gaussian's excellent TS
-optimization algos and QChem's fast integral evaluations.
+For example, you can use `qchem_g16` to perform optimizations and transition
+state searches using the algorithms in Gaussian but the quantum chemical
+methods in QChem.
 
 ## Installation
 
