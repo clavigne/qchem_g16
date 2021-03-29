@@ -1,8 +1,9 @@
+use anyhow::{Context, Result};
 use clap::{crate_version, App};
-use qchem_g16::{parse_gau_ein, qchem_translate_to_gaussian};
+use qchem_g16::Calculation;
 use std::env;
 use std::fs::{read_to_string, File};
-use std::io::{Result, Write};
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
@@ -75,11 +76,12 @@ should it include a $molecule section; these will be filled in by this script.
     msgs.write(format!(" |  args:      {:?}\n", qchem_args).as_bytes())?;
 
     // Load calculation details
-    let calc = parse_gau_ein(infile)?;
+    let gaussfile = read_to_string(infile).context(format!("No EIn file at {}", infile))?;
+    let calc = Calculation::from_ext(&gaussfile)?;
     let (jobtype, hess_and_grad) = match calc.nder {
         0 => ("sp", ""),
         1 => ("force", ""),
-        2 => ("freq", "hess_and_grad true\n"),
+        2 => ("freq", "hess_and_grad true\nvibman_print 6\n"),
         _ => ("", ""),
     };
 
@@ -88,16 +90,7 @@ should it include a $molecule section; these will be filled in by this script.
         false => "",
     };
 
-    // Make molecule data
-    let mol = format!(
-        "$molecule\n\
-         {} {}\n\
-         {}\n\
-         $end\n",
-        calc.charge,
-        calc.spin,
-        calc.get_geometry()
-    );
+    let mol = calc.qchem_molecule();
     let parameters = read_to_string(remfile)?;
     let (rem, extras) = extract_rem(parameters.trim());
 
@@ -106,8 +99,6 @@ should it include a $molecule section; these will be filled in by this script.
         "{}\n\
          {}{}\
          jobtype {}\n\
-         qm_mm true\n\
-         qmmm_print true\n\
          input_bohr true\n\
          {}{}",
         mol, rem, scf_guess, jobtype, hess_and_grad, extras
@@ -143,14 +134,7 @@ should it include a $molecule section; these will be filled in by this script.
         Err(e) => format!("Calling QChem failed\n {:?}\n", e),
     };
     msgs.write(&qchem_stdout.as_bytes())?;
-    qchem_translate_to_gaussian(outfile, &calc, &qchem_dir, &qchem_out)?;
-
-    // delete dat files
-    let _ = Command::new("rm")
-        .arg("efield.dat")
-        .arg("hessian.dat")
-        .current_dir(&qchem_dir)
-        .output();
-
+    let qchem_output = read_to_string(&qchem_out)?;
+    File::create(&outfile)?.write(calc.translate_qchem(&qchem_output)?.as_bytes())?;
     Ok(())
 }

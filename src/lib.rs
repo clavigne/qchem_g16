@@ -1,138 +1,116 @@
-use std::collections::HashMap;
+#[macro_use]
+extern crate anyhow;
+use anyhow::{Context, Result};
+// std library
 use std::convert::TryInto;
-use std::fs::{read_to_string, File};
-use std::io::{Error, ErrorKind, Result, Write};
+use std::fmt::Debug;
+use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 
 const CONV_FACTOR: f64 = 4.46552493159e-4;
 
-fn parse_energy(qchem_out: &str) -> Result<f64> {
-    let eline = qchem_out
-        .lines()
-        .filter(|x| x.starts_with(" The QM part of the energy is"))
-        .next();
-    // now an Option(str)
-    let out = match eline {
-        Some(val) => Ok(val),
-        None => Err(Error::new(
-            ErrorKind::Other,
-            "no energy line found in output file",
-        )),
-    };
-
-    match out {
-        Ok(val) => val
-            .strip_prefix(" The QM part of the energy is")
-            .unwrap()
-            .trim()
-            .parse::<f64>()
-            .map_err(|_| Error::new(ErrorKind::Other, "failed to parse floats")),
-        Err(e) => Err(e),
-    }
-}
-
-fn parse_nums_from_str<T: FromStr>(n: u16, data: String) -> Result<Vec<T>> {
+fn parse_nums_from_str<T: FromStr + Debug, const N: usize>(data: String) -> Result<[T; N]> {
     // Parse a vector of floats from a file.
     let nums: std::result::Result<Vec<_>, _> =
         data.split_whitespace().map(|x| x.parse::<T>()).collect();
 
     match nums {
-        Ok(i) => {
-            if i.len() == n.into() {
-                Ok(i)
+        Ok(vec) => {
+            if vec.len() == N.into() {
+                Ok({
+                    let out: [T; N] = vec.try_into().unwrap();
+                    out
+                })
             } else {
-                Err(Error::new(
-                    ErrorKind::Other,
-                    format!("expected {} values, got {}", n, i.len()),
-                ))
+                Err(anyhow!("expected {} values, got {}", N, vec.len()))
             }
         }
-        Err(_) => Err(Error::new(ErrorKind::Other, "failed to parse values")),
+        Err(_) => Err(anyhow!("failed to parse values")),
     }
 }
 
-pub fn qchem_translate_to_gaussian(
-    gaussian_out: &str,
-    calc: &Calculation,
-    qchem_loc: &Path,
-    qchem_out: &Path,
-) -> Result<()> {
-    let mut outfile = File::create(gaussian_out)?;
-    let natoms: u16 = calc.natoms.try_into().unwrap();
-    let nder = calc.nder;
+// QChem parsers
+fn parse_energy(qchem_out: &str) -> Result<f64> {
+    let tag = "Total energy in the final basis set =";
+    let out = qchem_out
+        .lines()
+        .filter_map(|x| x.trim_start().strip_prefix(tag))
+        .next()
+        .context("no energy line found in qchem output")?
+        .trim()
+        .parse::<f64>()
+        .context("failed to parse energy into float")?;
+    Ok(out)
+}
 
-    // energy
-    let energy = parse_energy(&read_to_string(qchem_out).expect("qchem output could not be read"))?;
-    outfile.write(format!("{:+20.12}", energy).as_bytes())?;
-
-    // dipole
-    outfile.write(format!("{:+20.12}{:+20.12}{:+20.12}\n", 0.0, 0.0, 0.0).as_bytes())?;
-
-    // derivatives
-    if nder > 0 {
-        let mut data = parse_nums_from_str::<f64>(
-            3 * natoms,
-            read_to_string(Path::new(&qchem_loc).join("efield.dat"))
-                .expect("efield.dat could not be read"),
-        )?;
-        for _ in 0..natoms {
-            for el in data.drain(..3) {
-                outfile.write(format!("{:+20.12}", el).as_bytes())?;
-            }
-            outfile.write("\n".as_bytes())?;
+fn parse_gradient(natom: usize, qchem_out: &str) -> Result<Vec<[f64; 3]>> {
+    let grads: Result<Vec<_>, _> = qchem_out
+        .lines()
+        .skip_while(|x| !x.trim_start().starts_with("Gradient of SCF Energy"))
+        .take_while(|x| !x.trim_start().starts_with("Max gradient"))
+        .flat_map(|x| x.split_whitespace())
+        .filter(|x| x.contains("."))
+        .map(|x| x.parse::<f64>())
+        .collect();
+    let grads = grads?;
+    let mut out = vec![[0.0, 0.0, 0.0]; natom];
+    let mut vals = grads.iter();
+    let mut iatom = 0;
+    let mut icoord = 0;
+    let mut count = 0;
+    while true {
+        for i in iatom..natom.min(iatom + 6) {
+            out[i][icoord] = *vals.next().unwrap();
+            count += 1;
         }
-        // polarizability + dip derivative (6 + 9 * Natoms)
-        for _ in 0..(2 + 3 * natoms) {
-            outfile.write(format!("{:+20.12}{:+20.12}{:+20.12}\n", 0.0, 0.0, 0.0).as_bytes())?;
+        if count == grads.len() {
+            break;
+        }
+        icoord += 1;
+        if icoord == 3 {
+            icoord = 0;
+            iatom += 6;
         }
     }
 
-    // hessian
-    if nder > 1 {
-        let n_hessian = (3 * natoms) * (3 * natoms + 1) / 2;
-        let data = parse_nums_from_str::<f64>(
-            n_hessian,
-            read_to_string(Path::new(&qchem_loc).join("hessian.dat"))
-                .expect("hessian.dat could not be read"),
-        )?;
+    Ok(out)
+}
 
-        // Maybe I should have used fortran. Some annoying indexing going down
-        // in the next bit. Don't touch! it works.
+fn parse_hessian(natom: usize, qchem_out: &str) -> Result<Vec<Vec<f64>>> {
+    let hess: Result<Vec<_>, _> = qchem_out
+        .lines()
+        .skip_while(|x| !x.trim_start().starts_with("Hessian of the SCF Energy"))
+        .take_while(|x| !x.trim_start().starts_with("Mass-Weighted Hessian Matrix"))
+        .flat_map(|x| x.split_whitespace())
+        .filter(|x| x.contains("."))
+        .map(|x| x.parse::<f64>())
+        .collect();
+    let hess = hess?;
+    let ncoord = 3 * natom;
 
-        // Basically, the hessian.dat is in Upper triangular, atom first order
-        // and the gaussian output is in Lower triangular, coordinate first.
-        let mut k = 0;
-        let mut hess = HashMap::new();
-        for i in 0..(3 * natoms) {
-            for j in i..(3 * natoms) {
-                hess.insert((i, j), data[k] * CONV_FACTOR);
-                hess.insert((j, i), data[k] * CONV_FACTOR);
-                k += 1;
-            }
+    let mut vals = hess.iter();
+    let mut iatom = 0;
+    let mut i = 0;
+    let mut count = 0;
+    let mut out = vec![vec![0.0; ncoord]; ncoord];
+    while true {
+        for j in iatom..ncoord.min(iatom + 6) {
+            out[i][j] = *vals.next().unwrap();
+            count += 1;
+        }
+        i += 1;
+        if i == ncoord {
+            i = 0;
+            iatom += 6;
         }
 
-        let mut count = 0;
-        for i in 0..natoms {
-            for ix in 0..3 {
-                for j in 0..natoms {
-                    for jx in 0..3 {
-                        let left = 3 * i + ix;
-                        let right = 3 * j + jx;
-                        if left >= right {
-                            count += 1;
-                            outfile.write(format!("{:+20.12}", hess[&(left, right)]).as_bytes())?;
-                            if count % 3 == 0 {
-                                outfile.write("\n".as_bytes())?;
-                            }
-                        }
-                    }
-                }
-            }
+        if count == hess.len() {
+            break;
         }
-        outfile.write("\n".as_bytes())?;
     }
-    Ok(())
+
+    Ok(out)
 }
 
 #[derive(Debug)]
@@ -146,7 +124,7 @@ pub struct Calculation {
 }
 
 impl Calculation {
-    pub fn get_geometry(&self) -> String {
+    pub fn geometry(&self) -> String {
         let mut output = String::new();
         for i in 0..self.natoms {
             output.push_str(&format!(
@@ -156,14 +134,25 @@ impl Calculation {
         }
         output.trim().to_string()
     }
-}
 
-pub fn parse_gau_ein(infile: &str) -> Result<Calculation> {
-    let gaussfile = read_to_string(infile)?;
-    let mut gauss = gaussfile.lines();
-    if let Some(header) = gauss.next() {
+    pub fn qchem_molecule(&self) -> String {
+        format!(
+            "$molecule\n\
+         {} {}\n\
+         {}\n\
+         $end\n",
+            self.charge,
+            self.spin,
+            self.geometry()
+        )
+    }
+
+    pub fn from_ext(gaussfile: &str) -> Result<Calculation> {
+        let mut gauss = gaussfile.lines();
+        let header = gauss.next().context("QChem output is truncated")?;
+
         // Parse
-        let entries = parse_nums_from_str::<i8>(4, header.to_string())?;
+        let entries = parse_nums_from_str::<i8, 4>(header.to_string())?;
         let natoms: usize = entries[0].try_into().unwrap();
         let nder: usize = entries[1].try_into().unwrap();
         let charge: i8 = entries[2];
@@ -174,15 +163,12 @@ pub fn parse_gau_ein(infile: &str) -> Result<Calculation> {
         for _ in 0..natoms {
             if let Some(line) = gauss.next() {
                 let (start, end) = line.split_at(11);
-                let atom = parse_nums_from_str::<u8>(1, start.to_string())?[0];
-                let vals = parse_nums_from_str::<f64>(4, end.to_string())?;
+                let atom = parse_nums_from_str::<u8, 1>(start.to_string())?[0];
+                let vals = parse_nums_from_str::<f64, 4>(end.to_string())?;
                 coords.push([vals[0], vals[1], vals[2]]);
                 zvals.push(atom);
             } else {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Gaussian input file is truncated",
-                ));
+                return Err(anyhow!("Gaussian input file is truncated"));
             }
         }
         Ok(Calculation {
@@ -193,7 +179,49 @@ pub fn parse_gau_ein(infile: &str) -> Result<Calculation> {
             z: zvals,
             coords: coords,
         })
-    } else {
-        Err(Error::new(ErrorKind::Other, "Gaussian input file is empty"))
+    }
+
+    pub fn translate_qchem(&self, qchem_out: &str) -> Result<String> {
+        let mut output = String::new();
+        let nder = self.nder;
+        let natoms = self.natoms;
+
+        // energy
+        output.push_str(&format!("{:+20.12}", parse_energy(qchem_out)?));
+
+        // dipole
+        output.push_str(&format!("{:+20.12}{:+20.12}{:+20.12}\n", 0.0, 0.0, 0.0));
+
+        // derivatives
+        if nder > 0 {
+            let grads = parse_gradient(natoms, qchem_out)?;
+            for el in grads {
+                for icoord in 0..3 {
+                    output.push_str(&format!("{:+20.12}", el[icoord]));
+                }
+                output.push('\n');
+            }
+            // polarizability + dip derivative (6 + 9 * Natoms)
+            for _ in 0..(2 + 3 * natoms) {
+                output.push_str(&format!("{:+20.12}{:+20.12}{:+20.12}\n", 0.0, 0.0, 0.0));
+            }
+        }
+
+        // hessian
+        if nder > 1 {
+            let hess = parse_hessian(natoms, qchem_out)?;
+            let mut count = 0;
+            for i in 0..3 * natoms {
+                for j in 0..i + 1 {
+                    output.push_str(&format!("{:+20.12}", hess[i][j]));
+                    count += 1;
+                    if count == 3 {
+                        output.push('\n');
+                        count = 0;
+                    }
+                }
+            }
+        }
+        Ok(output)
     }
 }

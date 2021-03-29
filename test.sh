@@ -8,4 +8,4 @@ rundir=$(realpath fake-qchem-dir)
 qchem=$(realpath test-data/qchem)
 ./qchem_g16 -d "$rundir" -e "$qchem"\
             --rem $(realpath test-data/params.rem) \
-            1 test-data/Gaussian.EIn Gaussian.EOu Gaussian.Em null null
+            1 test-data/Gau-274995.EIn Gau-274995.EOu Gau-274995.Em null null
