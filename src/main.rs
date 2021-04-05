@@ -40,6 +40,7 @@ should it include a $molecule section; these will be filled in by this script.
         .arg("<MsgFile>            'Messages for Gaussian'")
         .arg("[FChkFile]           'Formatted checkpoint file'")
         .arg("[MatElFile]          'Matrix elements'")
+        .arg("--dry                'Do not actually run Q-Chem, but do parse any results present.'")
         .get_matches();
 
     // Get argument values
@@ -47,6 +48,7 @@ should it include a $molecule section; these will be filled in by this script.
     let outfile = matches.value_of("OutputFile").unwrap();
     let msgfile = matches.value_of("MsgFile").unwrap();
     let remfile = matches.value_of("rem").unwrap();
+    let dry = matches.value_of("dry");
 
     // get some env variables
     let qchem_loc = matches.value_of("dir").unwrap_or(".");
@@ -59,6 +61,7 @@ should it include a $molecule section; these will be filled in by this script.
     let qchem_inp = qchem_dir.join("qchem.inp");
     let qchem_out = qchem_dir.join("qchem.out");
     let qchem_scratch = qchem_dir.join("qchem.scratch");
+    eprintln!("ready.");
 
     let mut msgs = File::create(msgfile)?;
     msgs.write(
@@ -76,6 +79,7 @@ should it include a $molecule section; these will be filled in by this script.
     msgs.write(format!(" |  args:      {:?}\n", qchem_args).as_bytes())?;
 
     // Load calculation details
+    eprintln!("loading gaussian input");
     let gaussfile = read_to_string(infile).context(format!("No EIn file at {}", infile))?;
     let calc = Calculation::from_ext(&gaussfile)?;
     let (jobtype, hess_and_grad) = match calc.nder {
@@ -84,17 +88,28 @@ should it include a $molecule section; these will be filled in by this script.
         2 => ("freq", "hess_and_grad true\nvibman_print 6\n"),
         _ => ("", ""),
     };
+    eprintln!("\tdone. calculation: {}", jobtype);
 
+    eprintln!("looking for restart data");
     let scf_guess = match qchem_scratch.is_dir() {
-        true => "scf_guess read\n",
-        false => "",
+        true => {
+            eprintln!("\trestart data found");
+            "scf_guess read\n"
+        }
+        false => {
+            eprintln!("\tno restart data");
+            ""
+        }
     };
 
+    eprintln!("reading & parsing rem file");
     let mol = calc.qchem_molecule();
     let parameters = read_to_string(remfile)?;
     let (rem, extras) = extract_rem(parameters.trim());
+    eprintln!("\tdone");
 
     // Make qchem input
+    eprintln!("building new rem group");
     let rem = format!(
         "{}\n\
          {}{}\
@@ -119,22 +134,48 @@ should it include a $molecule section; these will be filled in by this script.
     )?;
 
     File::create(&qchem_inp)?.write(rem.as_bytes())?;
+    eprintln!("\tdone");
 
-    let qchem = Command::new(qchem_exe)
+    let mut qchem_cli = Command::new(qchem_exe);
+    let qchem_cli = qchem_cli
         .args(&qchem_args)
         // these are not relative paths because we are calling qchem from $run_dir
         .arg("qchem.inp")
         .arg("qchem.out")
         .arg("qchem.scratch")
-        .current_dir(&qchem_dir)
-        .output();
+        .current_dir(&qchem_dir);
 
-    let qchem_stdout = match qchem {
-        Ok(val) => std::str::from_utf8(&val.stdout).unwrap().to_string(),
-        Err(e) => format!("Calling QChem failed\n {:?}\n", e),
+    let qchem_stdout = match dry {
+        Some(_) => {
+            eprintln!("qchem: {:#?}", qchem_cli);
+            eprintln!("running...");
+            let qchem = qchem_cli.output();
+            eprintln!("\tdone");
+            match qchem {
+                Ok(val) => std::str::from_utf8(&val.stdout).unwrap().to_string(),
+                Err(e) => format!("Calling QChem failed\n {:?}\n", e),
+            }
+        }
+        None => {
+            eprintln!("qchem: {:#?}", qchem_cli);
+            eprintln!("dry run!");
+            eprintln!("\tdone");
+            "DRY RUN\n QChem will not be executed.\n\n".to_string()
+        }
     };
+
     msgs.write(&qchem_stdout.as_bytes())?;
+
+    eprintln!("loading qchem output");
     let qchem_output = read_to_string(&qchem_out)?;
-    File::create(&outfile)?.write(calc.translate_qchem(&qchem_output)?.as_bytes())?;
+    eprintln!("\tdone");
+
+    eprintln!("translating qchem output");
+    let translation = calc.translate_qchem(&qchem_output)?;
+    eprintln!("\tdone");
+
+    eprintln!("writing for gaussian and terminating");
+    File::create(&outfile)?.write(translation.as_bytes())?;
+    eprintln!("\tALL DONE");
     Ok(())
 }

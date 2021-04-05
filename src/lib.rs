@@ -4,11 +4,7 @@ use anyhow::{Context, Result};
 // std library
 use std::convert::TryInto;
 use std::fmt::Debug;
-use std::io::Write;
-use std::path::Path;
 use std::str::FromStr;
-
-const CONV_FACTOR: f64 = 4.46552493159e-4;
 
 fn parse_nums_from_str<T: FromStr + Debug, const N: usize>(data: String) -> Result<[T; N]> {
     // Parse a vector of floats from a file.
@@ -59,7 +55,7 @@ fn parse_gradient(natom: usize, qchem_out: &str) -> Result<Vec<[f64; 3]>> {
     let mut iatom = 0;
     let mut icoord = 0;
     let mut count = 0;
-    while true {
+    loop {
         for i in iatom..natom.min(iatom + 6) {
             out[i][icoord] = *vals.next().unwrap();
             count += 1;
@@ -92,12 +88,10 @@ fn parse_hessian(natom: usize, qchem_out: &str) -> Result<Vec<Vec<f64>>> {
     let mut vals = hess.iter();
     let mut iatom = 0;
     let mut i = 0;
-    let mut count = 0;
     let mut out = vec![vec![0.0; ncoord]; ncoord];
-    while true {
+    loop {
         for j in iatom..ncoord.min(iatom + 6) {
             out[i][j] = *vals.next().unwrap();
-            count += 1;
         }
         i += 1;
         if i == ncoord {
@@ -105,7 +99,7 @@ fn parse_hessian(natom: usize, qchem_out: &str) -> Result<Vec<Vec<f64>>> {
             iatom += 6;
         }
 
-        if count == hess.len() {
+        if iatom >= ncoord {
             break;
         }
     }
@@ -187,14 +181,18 @@ impl Calculation {
         let natoms = self.natoms;
 
         // energy
+        eprintln!("\tparsing energy");
         output.push_str(&format!("{:+20.12}", parse_energy(qchem_out)?));
+        eprintln!("\t\tdone");
 
         // dipole
         output.push_str(&format!("{:+20.12}{:+20.12}{:+20.12}\n", 0.0, 0.0, 0.0));
 
         // derivatives
         if nder > 0 {
+            eprintln!("\tparsing gradient");
             let grads = parse_gradient(natoms, qchem_out)?;
+            eprintln!("\t\tdone");
             for el in grads {
                 for icoord in 0..3 {
                     output.push_str(&format!("{:+20.12}", el[icoord]));
@@ -209,7 +207,9 @@ impl Calculation {
 
         // hessian
         if nder > 1 {
+            eprintln!("\tparsing hessian");
             let hess = parse_hessian(natoms, qchem_out)?;
+            eprintln!("\t\tdone");
             let mut count = 0;
             for i in 0..3 * natoms {
                 for j in 0..i + 1 {
