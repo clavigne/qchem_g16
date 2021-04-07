@@ -48,7 +48,7 @@ should it include a $molecule section; these will be filled in by this script.
     let outfile = matches.value_of("OutputFile").unwrap();
     let msgfile = matches.value_of("MsgFile").unwrap();
     let remfile = matches.value_of("rem").unwrap();
-    let dry = matches.value_of("dry");
+    let dry = matches.is_present("dry");
 
     // get some env variables
     let qchem_loc = matches.value_of("dir").unwrap_or(".");
@@ -145,26 +145,29 @@ should it include a $molecule section; these will be filled in by this script.
         .arg("qchem.scratch")
         .current_dir(&qchem_dir);
 
-    let qchem_stdout = match dry {
-        Some(_) => {
+    let (qchem_stdout, do_panic) = match dry {
+        false => {
             eprintln!("qchem: {:#?}", qchem_cli);
             eprintln!("running...");
             let qchem = qchem_cli.output();
             eprintln!("\tdone");
             match qchem {
-                Ok(val) => std::str::from_utf8(&val.stdout).unwrap().to_string(),
-                Err(e) => format!("Calling QChem failed\n {:?}\n", e),
+                Ok(val) => (std::str::from_utf8(&val.stdout).unwrap().to_string(),false),
+                Err(e) => (format!("calling QChem failed\n {:?}\n", e), true),
             }
         }
-        None => {
+        true => {
             eprintln!("qchem: {:#?}", qchem_cli);
             eprintln!("dry run!");
             eprintln!("\tdone");
-            "DRY RUN\n QChem will not be executed.\n\n".to_string()
+            ("DRY RUN\n QChem will not be executed.\n\n".to_string(), false)
         }
     };
 
     msgs.write(&qchem_stdout.as_bytes())?;
+    if do_panic {
+        panic!("failed to launch qchem");
+    }
 
     eprintln!("loading qchem output");
     let qchem_output = read_to_string(&qchem_out)?;
