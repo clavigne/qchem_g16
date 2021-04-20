@@ -170,7 +170,7 @@ impl Calculation {
             eprintln!("\t\tdone");
             let mut count = 0;
             for el in grads {
-                output.push_str(&format!("{:+20.12}", el));
+                output.push_str(&format!("{:+20.12}", -el)); // IMPORTANT: QChem and Gaussian use inverse signs for the gradients! SRSLY WTF
                 count += 1;
                 if count == 3 {
                     output.push('\n');
