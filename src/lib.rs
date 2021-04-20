@@ -40,70 +40,45 @@ fn parse_energy(qchem_out: &str) -> Result<f64> {
     Ok(out)
 }
 
-fn parse_gradient(natom: usize, qchem_out: &str) -> Result<Vec<[f64; 3]>> {
-    let grads: Result<Vec<_>, _> = qchem_out
+fn parse_gradient(natom: usize, qchem_chk: &str) -> Result<Vec<f64>> {
+    let nlines = 3 * natom / 5 + 2;
+    let grads: Result<Vec<_>, _> = qchem_chk
         .lines()
-        .skip_while(|x| !x.trim_start().starts_with("Gradient of SCF Energy"))
-        .take_while(|x| !x.trim_start().starts_with("Max gradient"))
+        .skip_while(|x| !x.trim_start().starts_with("Cartesian Forces"))
+        .take(nlines)
         .flat_map(|x| x.split_whitespace())
         .filter(|x| x.contains("."))
         .map(|x| x.parse::<f64>())
         .collect();
     let grads = grads?;
-    let mut out = vec![[0.0, 0.0, 0.0]; natom];
     let mut vals = grads.iter();
-    let mut iatom = 0;
-    let mut icoord = 0;
-    let mut count = 0;
-    loop {
-        for i in iatom..natom.min(iatom + 6) {
-            out[i][icoord] = *vals.next().unwrap();
-            count += 1;
-        }
-        if count == grads.len() {
-            break;
-        }
-        icoord += 1;
-        if icoord == 3 {
-            icoord = 0;
-            iatom += 6;
-        }
+    let mut out = vec![];
+    for _ in 0..3 * natom {
+        let k = vals.next().unwrap();
+        out.push(*k);
     }
-
     Ok(out)
 }
 
-fn parse_hessian(natom: usize, qchem_out: &str) -> Result<Vec<Vec<f64>>> {
-    let hess: Result<Vec<_>, _> = qchem_out
+fn parse_hessian(natom: usize, qchem_chk: &str) -> Result<Vec<f64>> {
+    let ncoord = natom * 3;
+    let nel = ncoord * (ncoord + 1) / 2;
+    let nlines = nel / 5 + 2;
+    let hess: Result<Vec<_>, _> = qchem_chk
         .lines()
-        .skip_while(|x| !x.trim_start().starts_with("Hessian of the SCF Energy"))
-        .take_while(|x| !x.trim_start().starts_with("Mass-Weighted Hessian Matrix"))
+        .skip_while(|x| !x.trim_start().starts_with("Cartesian Force Constants"))
+        .take(nlines)
         .flat_map(|x| x.split_whitespace())
         .filter(|x| x.contains("."))
         .map(|x| x.parse::<f64>())
         .collect();
     let hess = hess?;
-    let ncoord = 3 * natom;
-
     let mut vals = hess.iter();
-    let mut irow = 0;
-    let mut icol = 0;
-    let mut out = vec![vec![0.0; ncoord]; ncoord];
-    loop {
-        for j in icol..ncoord.min(icol + 6) {
-            out[irow][j] = *vals.next().unwrap();
-        }
-        irow += 1;
-        if irow == ncoord {
-            irow = 0;
-            icol += 6;
-        }
-
-        if icol >= ncoord {
-            break;
-        }
+    let mut out = vec![];
+    for _ in 0..nel {
+        let k = vals.next().unwrap();
+        out.push(*k);
     }
-
     Ok(out)
 }
 
@@ -175,7 +150,7 @@ impl Calculation {
         })
     }
 
-    pub fn translate_qchem(&self, qchem_out: &str) -> Result<String> {
+    pub fn translate_qchem(&self, qchem_out: &str, qchem_fchk: &str) -> Result<String> {
         let mut output = String::new();
         let nder = self.nder;
         let natoms = self.natoms;
@@ -191,13 +166,16 @@ impl Calculation {
         // derivatives
         if nder > 0 {
             eprintln!("\tparsing gradient");
-            let grads = parse_gradient(natoms, qchem_out)?;
+            let grads = parse_gradient(natoms, qchem_fchk)?;
             eprintln!("\t\tdone");
+            let mut count = 0;
             for el in grads {
-                for icoord in 0..3 {
-                    output.push_str(&format!("{:+20.12}", el[icoord]));
+                output.push_str(&format!("{:+20.12}", el));
+                count += 1;
+                if count == 3 {
+                    output.push('\n');
+                    count = 0
                 }
-                output.push('\n');
             }
             // polarizability + dip derivative (6 + 9 * Natoms)
             for _ in 0..(2 + 3 * natoms) {
@@ -208,36 +186,15 @@ impl Calculation {
         // hessian
         if nder > 1 {
             eprintln!("\tparsing hessian");
-            let hess = parse_hessian(natoms, qchem_out)?;
+            let hess = parse_hessian(natoms, qchem_fchk)?;
             eprintln!("\t\tdone");
             let mut count = 0;
-
-            // for iatom in 0..natoms {
-            //     for jatom in 0..natoms {
-            //         for icoord in 0..3 {
-            //             for jcoord in 0..3 {
-            //                 let i = iatom * 3 + icoord;
-            //                 let j = jatom * 3 + jcoord;
-            //                 if i <= j {
-            //                     output.push_str(&format!("{:+20.12}", hess[i][j]));
-            //                     count += 1;
-            //                     if count == 3 {
-            //                         output.push('\n');
-            //                         count = 0;
-            //                     }
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
-            for i in 0..3 * natoms {
-                for j in 0..i + 1 {
-                    output.push_str(&format!("{:+20.12}", hess[i][j]));
-                    count += 1;
-                    if count == 3 {
-                        output.push('\n');
-                        count = 0;
-                    }
+            for el in hess {
+                output.push_str(&format!("{:+20.12}", el));
+                count += 1;
+                if count == 3 {
+                    output.push('\n');
+                    count = 0
                 }
             }
         }

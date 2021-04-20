@@ -60,6 +60,7 @@ should it include a $molecule section; these will be filled in by this script.
     let qchem_dir = Path::new(&qchem_loc);
     let qchem_inp = qchem_dir.join("qchem.inp");
     let qchem_out = qchem_dir.join("qchem.out");
+    let qchem_fchk = qchem_dir.join("qchem.fchk");
     let qchem_scratch = qchem_dir.join("qchem.scratch");
     eprintln!("ready.");
 
@@ -176,10 +177,11 @@ should it include a $molecule section; these will be filled in by this script.
 
     eprintln!("loading qchem output");
     let qchem_output = read_to_string(&qchem_out)?;
+    let qchem_formatted = read_to_string(&qchem_fchk)?;
     eprintln!("\tdone");
 
     eprintln!("translating qchem output");
-    let translation = calc.translate_qchem(&qchem_output)?;
+    let translation = calc.translate_qchem(&qchem_output, &qchem_formatted)?;
     eprintln!("\tdone");
 
     eprintln!("writing for gaussian and terminating");
