@@ -115,6 +115,7 @@ should it include a $molecule section; these will be filled in by this script.
          {}{}\
          jobtype {}\n\
          input_bohr true\n\
+         sym_ignore true\n\
          {}{}",
         mol, rem, scf_guess, jobtype, hess_and_grad, extras
     );
@@ -152,7 +153,7 @@ should it include a $molecule section; these will be filled in by this script.
             let qchem = qchem_cli.output();
             eprintln!("\tdone");
             match qchem {
-                Ok(val) => (std::str::from_utf8(&val.stdout).unwrap().to_string(),false),
+                Ok(val) => (std::str::from_utf8(&val.stdout).unwrap().to_string(), false),
                 Err(e) => (format!("calling QChem failed\n {:?}\n", e), true),
             }
         }
@@ -160,7 +161,10 @@ should it include a $molecule section; these will be filled in by this script.
             eprintln!("qchem: {:#?}", qchem_cli);
             eprintln!("dry run!");
             eprintln!("\tdone");
-            ("DRY RUN\n QChem will not be executed.\n\n".to_string(), false)
+            (
+                "DRY RUN\n QChem will not be executed.\n\n".to_string(),
+                false,
+            )
         }
     };
 

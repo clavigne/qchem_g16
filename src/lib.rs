@@ -86,20 +86,20 @@ fn parse_hessian(natom: usize, qchem_out: &str) -> Result<Vec<Vec<f64>>> {
     let ncoord = 3 * natom;
 
     let mut vals = hess.iter();
-    let mut iatom = 0;
-    let mut i = 0;
+    let mut irow = 0;
+    let mut icol = 0;
     let mut out = vec![vec![0.0; ncoord]; ncoord];
     loop {
-        for j in iatom..ncoord.min(iatom + 6) {
-            out[i][j] = *vals.next().unwrap();
+        for j in icol..ncoord.min(icol + 6) {
+            out[irow][j] = *vals.next().unwrap();
         }
-        i += 1;
-        if i == ncoord {
-            i = 0;
-            iatom += 6;
+        irow += 1;
+        if irow == ncoord {
+            irow = 0;
+            icol += 6;
         }
 
-        if iatom >= ncoord {
+        if icol >= ncoord {
             break;
         }
     }
@@ -211,6 +211,25 @@ impl Calculation {
             let hess = parse_hessian(natoms, qchem_out)?;
             eprintln!("\t\tdone");
             let mut count = 0;
+
+            // for iatom in 0..natoms {
+            //     for jatom in 0..natoms {
+            //         for icoord in 0..3 {
+            //             for jcoord in 0..3 {
+            //                 let i = iatom * 3 + icoord;
+            //                 let j = jatom * 3 + jcoord;
+            //                 if i <= j {
+            //                     output.push_str(&format!("{:+20.12}", hess[i][j]));
+            //                     count += 1;
+            //                     if count == 3 {
+            //                         output.push('\n');
+            //                         count = 0;
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
             for i in 0..3 * natoms {
                 for j in 0..i + 1 {
                     output.push_str(&format!("{:+20.12}", hess[i][j]));
