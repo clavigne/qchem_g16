@@ -116,6 +116,7 @@ should it include a $molecule section; these will be filled in by this script.
          jobtype {}\n\
          input_bohr true\n\
          sym_ignore true\n\
+         gui 2\n\
          {}{}",
         mol, rem, scf_guess, jobtype, hess_and_grad, extras
     );
